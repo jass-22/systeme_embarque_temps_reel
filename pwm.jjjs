@@ -1,0 +1,45 @@
+var app = require('http').createServer(handler);
+const io = require('/usr/local/lib/node_modules/socket.io')(app);
+var fs = require('fs');
+var path = require('path');
+const exec = require("child_process").exec;
+
+// Path to your HTML file
+var htmlPage = 'pwm.html';
+
+// Initialize the server on port 8888
+app.listen(8888, '0.0.0.0', () => {
+    console.log('Server running at http://192.168.6.2:8888');
+});
+
+
+function handler(req, res) {
+    fs.readFile(htmlPage, function (err, data) {
+        if (err) {
+            res.writeHead(404);
+            return res.end('Error loading file: ' + htmlPage);
+        }
+        res.writeHead(200);
+        res.end(data);
+    });
+}
+
+// Handle incoming socket.io connections
+io.on('connection', function (socket) {
+    console.log('Client connected');
+
+    socket.on('updatePWM', function (data) {
+        const { frequency, dutyCycle, enable } = JSON.parse(data);
+
+        // Call the shell script to configure PWM
+        const command = `./pwm.sh ${enable} ${frequency} ${dutyCycle}`;
+        exec(command, function (err, stdout, stderr) {
+            if (err) {
+                console.error('Error executing shell script:', stderr);
+            } else {
+                console.log('Shell script output:', stdout);
+            }
+        });
+    });
+});
+
